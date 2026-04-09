@@ -1,7 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createPasswordSalt, hashPassword, createToken, verifyToken } = require('../src/lib/crypto');
-const { validateAuthPayload, validateLoginPayload } = require('../src/lib/validation');
+const {
+  validateAuthPayload,
+  validateLoginPayload,
+  validateProfilePayload,
+  validateHealthMetrics,
+} = require('../src/lib/validation');
 
 test('hashPassword returns deterministic hash for same salt', () => {
   const salt = createPasswordSalt();
@@ -39,4 +44,24 @@ test('validateLoginPayload accepts valid payload', () => {
   });
 
   assert.equal(error, '');
+});
+
+test('validateProfilePayload accepts profile numbers', () => {
+  const error = validateProfilePayload({
+    height_cm: 170,
+    weight_kg: 68.5,
+    age_years: 29,
+  });
+
+  assert.equal(error, '');
+});
+
+test('validateHealthMetrics blocks invalid blood sugar', () => {
+  const error = validateHealthMetrics({
+    blood_pressure_systolic: 120,
+    blood_pressure_diastolic: 80,
+    blood_sugar_level: 99,
+  });
+
+  assert.equal(error, 'Уровень сахара должен быть числом от 1 до 40');
 });

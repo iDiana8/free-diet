@@ -66,6 +66,37 @@ async function getEntries(pool, dailyRecordId) {
   return result.rows;
 }
 
+async function getHealthMetrics(pool, userId, date) {
+  const result = await pool.query(
+    `
+      SELECT blood_pressure_systolic, blood_pressure_diastolic, blood_sugar_level
+      FROM daily_health_metrics
+      WHERE user_id = $1 AND record_date = $2
+      LIMIT 1
+    `,
+    [userId, date],
+  );
+
+  const metrics = result.rows[0];
+
+  if (!metrics) {
+    return {
+      blood_pressure_systolic: null,
+      blood_pressure_diastolic: null,
+      blood_sugar_level: null,
+    };
+  }
+
+  return {
+    blood_pressure_systolic:
+      metrics.blood_pressure_systolic === null ? null : Number(metrics.blood_pressure_systolic),
+    blood_pressure_diastolic:
+      metrics.blood_pressure_diastolic === null ? null : Number(metrics.blood_pressure_diastolic),
+    blood_sugar_level:
+      metrics.blood_sugar_level === null ? null : Number(metrics.blood_sugar_level),
+  };
+}
+
 function createProductsById(products) {
   const productsById = {};
 
@@ -84,10 +115,11 @@ function createProductsById(products) {
 }
 
 async function getDailyPayload(pool, userId, date) {
-  const [products, targets, dailyRecord] = await Promise.all([
+  const [products, targets, dailyRecord, healthMetrics] = await Promise.all([
     getProducts(pool),
     getUserTargets(pool, userId),
     getDailyRecord(pool, userId, date),
+    getHealthMetrics(pool, userId, date),
   ]);
 
   const entries = await getEntries(pool, dailyRecord?.id);
@@ -99,6 +131,7 @@ async function getDailyPayload(pool, userId, date) {
     note: dailyRecord?.note || '',
     products,
     entries: groupEntries(entries, productsById),
+    health_metrics: healthMetrics,
     dashboard,
   };
 }
@@ -133,6 +166,33 @@ async function saveDailyPayload(pool, userId, date, payload) {
         [dailyRecordId, entry.section_key, entry.product_id, entry.amount],
       );
     }
+
+    await client.query(
+      `
+        INSERT INTO daily_health_metrics (
+          user_id,
+          record_date,
+          blood_pressure_systolic,
+          blood_pressure_diastolic,
+          blood_sugar_level,
+          updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (user_id, record_date)
+        DO UPDATE SET
+          blood_pressure_systolic = EXCLUDED.blood_pressure_systolic,
+          blood_pressure_diastolic = EXCLUDED.blood_pressure_diastolic,
+          blood_sugar_level = EXCLUDED.blood_sugar_level,
+          updated_at = NOW()
+      `,
+      [
+        userId,
+        date,
+        payload.health_metrics?.blood_pressure_systolic ?? null,
+        payload.health_metrics?.blood_pressure_diastolic ?? null,
+        payload.health_metrics?.blood_sugar_level ?? null,
+      ],
+    );
 
     await client.query('COMMIT');
   } catch (error) {

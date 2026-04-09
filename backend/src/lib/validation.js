@@ -40,6 +40,67 @@ function validateEntry(entry, index) {
   return '';
 }
 
+function validateOptionalNumber(value, min, max, message) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return message;
+  }
+
+  if (value < min || value > max) {
+    return message;
+  }
+
+  return '';
+}
+
+function validateHealthMetrics(payload) {
+  if (payload === null || payload === undefined) {
+    return '';
+  }
+
+  if (!isPlainObject(payload)) {
+    return 'Поле health_metrics должно быть объектом';
+  }
+
+  const systolicError = validateOptionalNumber(
+    payload.blood_pressure_systolic,
+    50,
+    300,
+    'Систолическое давление должно быть числом от 50 до 300',
+  );
+
+  if (systolicError) {
+    return systolicError;
+  }
+
+  const diastolicError = validateOptionalNumber(
+    payload.blood_pressure_diastolic,
+    30,
+    200,
+    'Диастолическое давление должно быть числом от 30 до 200',
+  );
+
+  if (diastolicError) {
+    return diastolicError;
+  }
+
+  const sugarError = validateOptionalNumber(
+    payload.blood_sugar_level,
+    1,
+    40,
+    'Уровень сахара должен быть числом от 1 до 40',
+  );
+
+  if (sugarError) {
+    return sugarError;
+  }
+
+  return '';
+}
+
 function validateDailyPayload(payload) {
   if (!isPlainObject(payload)) {
     return 'Тело запроса должно быть объектом';
@@ -59,6 +120,12 @@ function validateDailyPayload(payload) {
 
   if (payload.entries.length > 200) {
     return 'Слишком много записей за день';
+  }
+
+  const healthMetricsError = validateHealthMetrics(payload.health_metrics);
+
+  if (healthMetricsError) {
+    return healthMetricsError;
   }
 
   for (let index = 0; index < payload.entries.length; index += 1) {
@@ -108,9 +175,52 @@ function validateLoginPayload(payload) {
   return '';
 }
 
+function validateProfilePayload(payload) {
+  if (!isPlainObject(payload)) {
+    return 'Тело запроса должно быть объектом';
+  }
+
+  const heightError = validateOptionalNumber(
+    payload.height_cm,
+    50,
+    260,
+    'Рост должен быть числом от 50 до 260',
+  );
+
+  if (heightError) {
+    return heightError;
+  }
+
+  const weightError = validateOptionalNumber(
+    payload.weight_kg,
+    20,
+    400,
+    'Вес должен быть числом от 20 до 400',
+  );
+
+  if (weightError) {
+    return weightError;
+  }
+
+  const ageError = validateOptionalNumber(
+    payload.age_years,
+    1,
+    120,
+    'Возраст должен быть числом от 1 до 120',
+  );
+
+  if (ageError) {
+    return ageError;
+  }
+
+  return '';
+}
+
 module.exports = {
   validateDate,
   validateDailyPayload,
   validateAuthPayload,
   validateLoginPayload,
+  validateProfilePayload,
+  validateHealthMetrics,
 };

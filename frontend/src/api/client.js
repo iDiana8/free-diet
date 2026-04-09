@@ -44,6 +44,16 @@ export function getCurrentUser(token) {
   });
 }
 
+export function updateCurrentUser(payload, token) {
+  return request('/auth/me', {
+    method: 'PUT',
+    headers: createAuthHeaders(token, {
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getDailyJournal(date, token) {
   return request(`/daily/${date}`, {
     headers: createAuthHeaders(token),

@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   password_salt TEXT NOT NULL,
+  height_cm NUMERIC(10, 2),
+  weight_kg NUMERIC(10, 2),
+  age_years INTEGER,
   target_calories NUMERIC(10, 2) NOT NULL DEFAULT 2000,
   target_protein NUMERIC(10, 2) NOT NULL DEFAULT 120,
   target_fat NUMERIC(10, 2) NOT NULL DEFAULT 70,
@@ -44,6 +47,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS target_protein NUMERIC(10, 2) NOT NUL
 ALTER TABLE users ADD COLUMN IF NOT EXISTS target_fat NUMERIC(10, 2) NOT NULL DEFAULT 70;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS target_carbs NUMERIC(10, 2) NOT NULL DEFAULT 220;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS target_water_ml NUMERIC(10, 2) NOT NULL DEFAULT 2000;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm NUMERIC(10, 2);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_kg NUMERIC(10, 2);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS age_years INTEGER;
 
 DO $$
 BEGIN
@@ -74,6 +80,18 @@ CREATE TABLE IF NOT EXISTS daily_entries (
   product_id INTEGER NOT NULL REFERENCES nutrition_products(id),
   amount NUMERIC(10, 2) NOT NULL CHECK (amount > 0),
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS daily_health_metrics (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  record_date DATE NOT NULL,
+  blood_pressure_systolic INTEGER,
+  blood_pressure_diastolic INTEGER,
+  blood_sugar_level NUMERIC(10, 2),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, record_date)
 );
 
 INSERT INTO nutrition_products (name, product_kind, unit_label, base_amount, calories, protein, fat, carbs, allowed_sections)

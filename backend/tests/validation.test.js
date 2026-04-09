@@ -16,6 +16,11 @@ test('validateDailyPayload accepts valid payload', () => {
         amount: 120,
       },
     ],
+    health_metrics: {
+      blood_pressure_systolic: 120,
+      blood_pressure_diastolic: 80,
+      blood_sugar_level: 5.4,
+    },
   };
 
   assert.equal(validateDailyPayload(payload), '');

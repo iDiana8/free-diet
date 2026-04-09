@@ -1,8 +1,8 @@
 const { Router } = require('express');
 const pool = require('../db');
 const { getConfig } = require('../lib/config');
-const { validateAuthPayload, validateLoginPayload } = require('../lib/validation');
-const { registerUser, loginUser, getCurrentUser } = require('../services/auth.service');
+const { validateAuthPayload, validateLoginPayload, validateProfilePayload } = require('../lib/validation');
+const { registerUser, loginUser, getCurrentUser, updateCurrentUser } = require('../services/auth.service');
 const { requireAuth } = require('../middleware/auth.middleware');
 
 const config = getConfig();
@@ -61,6 +61,27 @@ router.get('/me', requireAuth, async (request, response) => {
   } catch (error) {
     console.error(error);
     return response.status(500).json({ message: 'Не удалось загрузить пользователя' });
+  }
+});
+
+router.put('/me', requireAuth, async (request, response) => {
+  const payloadError = validateProfilePayload(request.body);
+
+  if (payloadError) {
+    return response.status(400).json({ message: payloadError });
+  }
+
+  try {
+    const user = await updateCurrentUser(pool, request.user.id, request.body);
+
+    if (!user) {
+      return response.status(404).json({ message: 'Пользователь не найден' });
+    }
+
+    return response.json({ user });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({ message: 'Не удалось сохранить профиль' });
   }
 });
 

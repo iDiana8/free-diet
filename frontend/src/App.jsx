@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getCurrentUser, getDailyJournal, loginUser, registerUser, saveDailyJournal } from './api/client';
+import {
+  getCurrentUser,
+  getDailyJournal,
+  loginUser,
+  registerUser,
+  saveDailyJournal,
+  updateCurrentUser,
+} from './api/client';
 import AuthPanel from './components/AuthPanel';
 import DashboardCard from './components/DashboardCard';
 import MealSectionCard from './components/MealSectionCard';
 import NotesPanel from './components/NotesPanel';
+import ProfileOverviewCard from './components/ProfileOverviewCard';
 import { sections } from './constants/sections';
 import {
   createEmptyEntriesMap,
@@ -23,6 +31,18 @@ const defaultTargets = {
   water_ml: 2000,
 };
 
+const defaultProfileForm = {
+  height_cm: '',
+  weight_kg: '',
+  age_years: '',
+};
+
+const defaultHealthForm = {
+  blood_pressure_systolic: '',
+  blood_pressure_diastolic: '',
+  blood_sugar_level: '',
+};
+
 function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -39,14 +59,47 @@ function clearToken() {
   localStorage.removeItem('free-diet-token');
 }
 
+function normalizeProfileForm(user) {
+  return {
+    height_cm: user?.height_cm ?? '',
+    weight_kg: user?.weight_kg ?? '',
+    age_years: user?.age_years ?? '',
+  };
+}
+
+function normalizeHealthForm(healthMetrics) {
+  return {
+    blood_pressure_systolic: healthMetrics?.blood_pressure_systolic ?? '',
+    blood_pressure_diastolic: healthMetrics?.blood_pressure_diastolic ?? '',
+    blood_sugar_level: healthMetrics?.blood_sugar_level ?? '',
+  };
+}
+
+function parseOptionalNumber(value) {
+  if (value === '' || value === null || value === undefined) {
+    return null;
+  }
+
+  const parsedValue = Number(value);
+
+  if (Number.isNaN(parsedValue)) {
+    return null;
+  }
+
+  return parsedValue;
+}
+
 function App() {
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const [products, setProducts] = useState([]);
   const [entriesBySection, setEntriesBySection] = useState(createEmptyEntriesMap);
   const [targets, setTargets] = useState(defaultTargets);
   const [note, setNote] = useState('');
+  const [profileForm, setProfileForm] = useState(defaultProfileForm);
+  const [healthForm, setHealthForm] = useState(defaultHealthForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -88,6 +141,7 @@ function App() {
       const data = await getCurrentUser(storedToken);
       setToken(storedToken);
       setCurrentUser(data.user);
+      setProfileForm(normalizeProfileForm(data.user));
     } catch (requestError) {
       clearToken();
       setToken('');
@@ -108,6 +162,7 @@ function App() {
       setEntriesBySection(normalizeEntries(data.entries));
       setTargets(data.dashboard?.targets || defaultTargets);
       setNote(data.note || '');
+      setHealthForm(normalizeHealthForm(data.health_metrics));
     } catch (requestError) {
       if (requestError.message === 'Нужна авторизация') {
         handleLogout();
@@ -119,6 +174,7 @@ function App() {
       setEntriesBySection(createEmptyEntriesMap());
       setTargets(defaultTargets);
       setNote('');
+      setHealthForm(defaultHealthForm);
     } finally {
       setLoading(false);
     }
@@ -133,6 +189,7 @@ function App() {
       storeToken(data.token);
       setToken(data.token);
       setCurrentUser(data.user);
+      setProfileForm(normalizeProfileForm(data.user));
     } catch (requestError) {
       setAuthError(requestError.message || 'Не удалось создать аккаунт');
     } finally {
@@ -149,6 +206,7 @@ function App() {
       storeToken(data.token);
       setToken(data.token);
       setCurrentUser(data.user);
+      setProfileForm(normalizeProfileForm(data.user));
     } catch (requestError) {
       setAuthError(requestError.message || 'Не удалось войти');
     } finally {
@@ -164,9 +222,68 @@ function App() {
     setEntriesBySection(createEmptyEntriesMap());
     setTargets(defaultTargets);
     setNote('');
+    setProfileForm(defaultProfileForm);
+    setHealthForm(defaultHealthForm);
     setError('');
     setSuccessMessage('');
     setLoading(false);
+  }
+
+  function handleProfileChange(fieldName, value) {
+    setProfileForm((currentState) => ({
+      ...currentState,
+      [fieldName]: value,
+    }));
+  }
+
+  function handleHealthChange(fieldName, value) {
+    setHealthForm((currentState) => ({
+      ...currentState,
+      [fieldName]: value,
+    }));
+  }
+
+  async function handleSaveProfile() {
+    setProfileSaving(true);
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      const profilePayload = {
+        height_cm: parseOptionalNumber(profileForm.height_cm),
+        weight_kg: parseOptionalNumber(profileForm.weight_kg),
+        age_years: parseOptionalNumber(profileForm.age_years),
+      };
+
+      const profileResponse = await updateCurrentUser(profilePayload, token);
+      const journalPayload = createSavePayload(entriesBySection, note);
+      const savedData = await saveDailyJournal(
+        selectedDate,
+        {
+          ...journalPayload,
+          health_metrics: {
+            blood_pressure_systolic: parseOptionalNumber(healthForm.blood_pressure_systolic),
+            blood_pressure_diastolic: parseOptionalNumber(healthForm.blood_pressure_diastolic),
+            blood_sugar_level: parseOptionalNumber(healthForm.blood_sugar_level),
+          },
+        },
+        token,
+      );
+
+      setCurrentUser(profileResponse.user);
+      setProfileForm(normalizeProfileForm(profileResponse.user));
+      setHealthForm(normalizeHealthForm(savedData.health_metrics));
+      setSuccessMessage('Профиль и показатели дня сохранены.');
+    } catch (requestError) {
+      if (requestError.message === 'Нужна авторизация') {
+        handleLogout();
+        return;
+      }
+
+      setError(requestError.message || 'Не удалось сохранить данные человека');
+    } finally {
+      setProfileSaving(false);
+    }
   }
 
   function handleAddRow(sectionKey) {
@@ -206,9 +323,21 @@ function App() {
 
     try {
       const payload = createSavePayload(entriesBySection, note);
-      const savedData = await saveDailyJournal(selectedDate, payload, token);
+      const savedData = await saveDailyJournal(
+        selectedDate,
+        {
+          ...payload,
+          health_metrics: {
+            blood_pressure_systolic: parseOptionalNumber(healthForm.blood_pressure_systolic),
+            blood_pressure_diastolic: parseOptionalNumber(healthForm.blood_pressure_diastolic),
+            blood_sugar_level: parseOptionalNumber(healthForm.blood_sugar_level),
+          },
+        },
+        token,
+      );
       setEntriesBySection(normalizeEntries(savedData.entries));
       setTargets(savedData.dashboard?.targets || defaultTargets);
+      setHealthForm(normalizeHealthForm(savedData.health_metrics));
       setSuccessMessage('Дневник питания сохранён в ваш аккаунт.');
     } catch (requestError) {
       if (requestError.message === 'Нужна авторизация') {
@@ -250,6 +379,16 @@ function App() {
             <button className="hero__logout" type="button" onClick={handleLogout}>Выйти</button>
           </div>
         </section>
+
+        <ProfileOverviewCard
+          profileForm={profileForm}
+          healthForm={healthForm}
+          onProfileChange={handleProfileChange}
+          onHealthChange={handleHealthChange}
+          onSaveProfile={handleSaveProfile}
+          profileSaving={profileSaving}
+          selectedDate={selectedDate}
+        />
 
         <div className="tablet">
           <div className="tablet__camera" />
