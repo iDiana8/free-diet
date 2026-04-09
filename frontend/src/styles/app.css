@@ -559,37 +559,260 @@
 
 @media (max-width: 760px) {
   .page {
-    padding: 16px 12px 32px;
+    padding: 12px 10px 24px;
+  }
+
+  .page__shell {
+    max-width: 100%;
+  }
+
+  .hero {
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .hero__badge {
+    margin-bottom: 8px;
+    padding: 8px 12px;
+  }
+
+  .hero__title {
+    font-size: clamp(2rem, 9vw, 2.8rem);
+    line-height: 1;
+  }
+
+  .hero__text {
+    font-size: 15px;
+  }
+
+  .hero__actions {
+    width: 100%;
+    display: grid;
+    gap: 10px;
+  }
+
+  .hero__date-picker,
+  .hero__logout {
+    width: 100%;
+  }
+
+  .hero__date-picker {
+    min-width: 0;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .hero__logout {
+    padding: 13px 16px;
   }
 
   .tablet {
-    padding: 14px;
-    border-radius: 28px;
+    padding: 10px;
+    border-radius: 22px;
   }
 
-  .screen-header,
-  .content-grid {
-    padding: 18px;
+  .tablet__camera {
+    top: 8px;
+    width: 64px;
+    height: 8px;
+  }
+
+  .tablet__screen {
+    border-radius: 18px;
+  }
+
+  .screen-header {
+    padding: 18px 16px 16px;
   }
 
   .screen-header {
     flex-direction: column;
+    gap: 14px;
+  }
+
+  .screen-header__title {
+    font-size: 24px;
+  }
+
+  .screen-header__subtitle {
+    font-size: 14px;
   }
 
   .dashboard-card,
   .notes-panel,
-  .section-card {
-    border-radius: 22px;
+  .section-card,
+  .profile-card,
+  .profile-panel {
+    border-radius: 18px;
   }
 
   .section-card__header,
-  .dashboard-card__header {
+  .dashboard-card__header,
+  .profile-card__header {
     flex-direction: column;
   }
 
   .section-card__summary-grid,
   .dashboard-card__metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .content-grid {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .content-grid__main {
+    gap: 16px;
+  }
+
+  .dashboard-card,
+  .notes-panel,
+  .profile-card {
+    padding: 16px;
+  }
+
+  .dashboard-card__title,
+  .profile-card__title,
+  .notes-panel__title {
+    font-size: 24px;
+  }
+
+  .dashboard-card__summary {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .dashboard-card__summary strong {
+    font-size: 28px;
+  }
+
+  .progress-ring {
+    width: 180px;
+    height: 180px;
+  }
+
+  .progress-ring__value {
+    font-size: 30px;
+  }
+
+  .section-card__header,
+  .section-card__summary-grid,
+  .section-card__rows {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .section-card__header {
+    padding-top: 18px;
+    padding-bottom: 14px;
+  }
+
+  .section-card__title {
+    font-size: 22px;
+  }
+
+  .section-card__subtitle {
+    font-size: 13px;
+  }
+
+  .section-card__button,
+  .notes-panel__button,
+  .profile-card__button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .entry-row {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .entry-row__nutrition {
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .notes-panel__textarea {
+    min-height: 160px;
+  }
+
+  .profile-card {
+    margin-bottom: 16px;
+  }
+
+  .profile-panel {
+    padding: 16px;
+  }
+
+  .profile-panel__title {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 8px 8px 18px;
+  }
+
+  .hero__title {
+    font-size: 1.9rem;
+  }
+
+  .hero__text,
+  .dashboard-card__text,
+  .profile-card__text,
+  .notes-panel__text,
+  .screen-header__subtitle {
+    font-size: 14px;
+  }
+
+  .hero__date-picker,
+  .dashboard-card,
+  .notes-panel,
+  .profile-card {
+    padding: 14px;
+  }
+
+  .content-grid {
+    padding: 12px;
+  }
+
+  .section-card__summary-grid,
+  .dashboard-card__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-pill,
+  .metric-card {
+    padding: 12px;
+  }
+
+  .section-card__index {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+  }
+
+  .section-card__title {
+    font-size: 20px;
+  }
+
+  .entry-row__nutrition span {
+    width: 100%;
+    text-align: center;
+  }
+
+  .profile-panel__fields,
+  .auth-form {
+    gap: 12px;
+  }
+
+  .field-control,
+  .notes-panel__textarea,
+  .auth-switcher__button,
+  .hero__logout {
+    font-size: 16px;
   }
 }
 
