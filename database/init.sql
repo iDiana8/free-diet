@@ -18,14 +18,16 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS nutrition_products (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
+  name_normalized TEXT,
   product_kind TEXT NOT NULL CHECK (product_kind IN ('food', 'drink', 'water')),
   unit_label TEXT NOT NULL,
   base_amount NUMERIC(10, 2) NOT NULL CHECK (base_amount > 0),
   calories NUMERIC(10, 2) NOT NULL CHECK (calories >= 0),
-  protein NUMERIC(10, 2) NOT NULL CHECK (protein >= 0),
-  fat NUMERIC(10, 2) NOT NULL CHECK (fat >= 0),
-  carbs NUMERIC(10, 2) NOT NULL CHECK (carbs >= 0),
+  protein NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (protein >= 0),
+  fat NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (fat >= 0),
+  carbs NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (carbs >= 0),
   allowed_sections TEXT[] NOT NULL,
+  created_by_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -50,6 +52,18 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS target_water_ml NUMERIC(10, 2) NOT NU
 ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm NUMERIC(10, 2);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_kg NUMERIC(10, 2);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS age_years INTEGER;
+ALTER TABLE nutrition_products ADD COLUMN IF NOT EXISTS name_normalized TEXT;
+ALTER TABLE nutrition_products ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE nutrition_products ALTER COLUMN protein SET DEFAULT 0;
+ALTER TABLE nutrition_products ALTER COLUMN fat SET DEFAULT 0;
+ALTER TABLE nutrition_products ALTER COLUMN carbs SET DEFAULT 0;
+
+UPDATE nutrition_products
+SET name_normalized = LOWER(REGEXP_REPLACE(REPLACE(name, 'ё', 'е'), '[^[:alnum:]%]+', ' ', 'g'))
+WHERE name_normalized IS NULL OR BTRIM(name_normalized) = '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS nutrition_products_unique_name_per_owner
+ON nutrition_products (name_normalized, COALESCE(created_by_user_id, 0));
 
 DO $$
 BEGIN
@@ -93,25 +107,3 @@ CREATE TABLE IF NOT EXISTS daily_health_metrics (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, record_date)
 );
-
-INSERT INTO nutrition_products (name, product_kind, unit_label, base_amount, calories, protein, fat, carbs, allowed_sections)
-SELECT *
-FROM (
-  VALUES
-    ('Овсяная каша', 'food', 'г', 100, 88, 3.0, 1.7, 15.0, ARRAY['breakfast', 'snacks']),
-    ('Омлет', 'food', 'г', 100, 154, 11.0, 11.0, 2.0, ARRAY['breakfast', 'lunch']),
-    ('Гречка', 'food', 'г', 100, 110, 4.2, 1.1, 21.3, ARRAY['lunch', 'dinner']),
-    ('Куриная грудка', 'food', 'г', 100, 165, 31.0, 3.6, 0.0, ARRAY['lunch', 'dinner']),
-    ('Творог 5%', 'food', 'г', 100, 121, 17.0, 5.0, 1.8, ARRAY['breakfast', 'snacks']),
-    ('Банан', 'food', 'г', 100, 89, 1.1, 0.3, 22.8, ARRAY['breakfast', 'snacks']),
-    ('Овощной салат', 'food', 'г', 100, 45, 1.5, 2.1, 6.5, ARRAY['lunch', 'dinner']),
-    ('Суп овощной', 'food', 'г', 100, 38, 1.2, 1.0, 5.6, ARRAY['lunch', 'dinner']),
-    ('Орехи', 'food', 'г', 100, 610, 20.0, 53.0, 11.0, ARRAY['snacks']),
-    ('Йогурт натуральный', 'food', 'г', 100, 63, 5.0, 2.0, 7.0, ARRAY['breakfast', 'snacks']),
-    ('Вода', 'water', 'мл', 100, 0, 0, 0, 0, ARRAY['water']),
-    ('Минеральная вода', 'water', 'мл', 100, 0, 0, 0, 0, ARRAY['water']),
-    ('Чай без сахара', 'drink', 'мл', 100, 1, 0, 0, 0.2, ARRAY['drinks']),
-    ('Кофе американо', 'drink', 'мл', 100, 2, 0.2, 0.1, 0.0, ARRAY['drinks']),
-    ('Апельсиновый сок', 'drink', 'мл', 100, 45, 0.7, 0.2, 10.4, ARRAY['drinks'])
-) AS source (name, product_kind, unit_label, base_amount, calories, protein, fat, carbs, allowed_sections)
-WHERE NOT EXISTS (SELECT 1 FROM nutrition_products);

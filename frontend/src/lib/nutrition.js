@@ -15,6 +15,7 @@ export function createClientRow(sectionKey) {
     client_id: `${sectionKey}-${Date.now()}-${Math.round(Math.random() * 100000)}`,
     section_key: sectionKey,
     product_id: '',
+    product_query: '',
     amount: '',
   };
 }
@@ -29,6 +30,7 @@ export function normalizeEntries(entriesBySection) {
       client_id: row.id ? `${section.key}-${row.id}` : `${section.key}-${index}`,
       section_key: section.key,
       product_id: row.product_id,
+      product_query: row.product_name || '',
       amount: row.amount,
     }));
   }
@@ -51,6 +53,55 @@ export function createProductsById(products) {
   }
 
   return result;
+}
+
+export function sortProductsByName(products) {
+  return [...products].sort((leftProduct, rightProduct) =>
+    leftProduct.name.localeCompare(rightProduct.name, 'ru'),
+  );
+}
+
+const sectionSuggestionPatterns = {
+  breakfast: ['творог', 'яйц', 'омлет', 'яичниц', 'овсян', 'каша', 'йогурт', 'сырник'],
+  lunch: ['суп', 'кур', 'индейк', 'рис', 'греч', 'котлет', 'овощ', 'салат'],
+  dinner: ['рыб', 'салат', 'овощ', 'кур', 'индейк', 'треск', 'тунец', 'творог'],
+  snacks: ['печенье', 'банан', 'шоколад', 'орех', 'батончик', 'яблок', 'йогурт', 'сухофрукт'],
+  drinks: ['чай', 'кофе', 'сок', 'морс', 'компот', 'какао', 'кефир', 'ряженка'],
+  water: ['вода', 'минеральная вода'],
+};
+
+export function getProductSuggestions(products, sectionKey, query, limit = 5) {
+  const normalizedQuery = normalizeSearchText(query);
+  const orderedProducts = sortProductsByName(products);
+  const preferredPatterns = sectionSuggestionPatterns[sectionKey] || [];
+
+  if (!normalizedQuery) {
+    return sortProductsByPriority(orderedProducts, preferredPatterns).slice(0, limit);
+  }
+
+  const startsWithMatches = [];
+  const preferredMatches = [];
+  const includesMatches = [];
+
+  for (const product of orderedProducts) {
+    const normalizedName = normalizeSearchText(product.name);
+
+    if (normalizedName.startsWith(normalizedQuery)) {
+      startsWithMatches.push(product);
+      continue;
+    }
+
+    if (normalizedName.includes(normalizedQuery)) {
+      if (containsPreferredPattern(normalizedName, preferredPatterns)) {
+        preferredMatches.push(product);
+        continue;
+      }
+
+      includesMatches.push(product);
+    }
+  }
+
+  return [...startsWithMatches, ...preferredMatches, ...includesMatches].slice(0, limit);
 }
 
 export function calculateRowNutrition(row, productsById) {
@@ -191,4 +242,33 @@ function buildPercent(currentValue, targetValue) {
 
 function roundValue(value) {
   return Math.round(value * 10) / 10;
+}
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+}
+
+function sortProductsByPriority(products, preferredPatterns) {
+  const priorityProducts = [];
+  const otherProducts = [];
+
+  for (const product of products) {
+    const normalizedName = normalizeSearchText(product.name);
+
+    if (containsPreferredPattern(normalizedName, preferredPatterns)) {
+      priorityProducts.push(product);
+      continue;
+    }
+
+    otherProducts.push(product);
+  }
+
+  return [...priorityProducts, ...otherProducts];
+}
+
+function containsPreferredPattern(normalizedName, preferredPatterns) {
+  return preferredPatterns.some((pattern) => normalizedName.includes(pattern));
 }

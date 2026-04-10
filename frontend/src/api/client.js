@@ -69,3 +69,13 @@ export function saveDailyJournal(date, payload, token) {
     body: JSON.stringify(payload),
   });
 }
+
+export function createCatalogProduct(payload, token) {
+  return request('/catalog/custom', {
+    method: 'POST',
+    headers: createAuthHeaders(token, {
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify(payload),
+  });
+}

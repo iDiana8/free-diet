@@ -1,11 +1,27 @@
-import { createProductsById, calculateRowNutrition, buildSectionSummary } from '../lib/nutrition';
+import { useState } from 'react';
+import {
+  createProductsById,
+  calculateRowNutrition,
+  buildSectionSummary,
+  getProductSuggestions,
+} from '../lib/nutrition';
 
 function getUnitLabel(productsById, productId) {
   const product = productsById[productId];
   return product?.unit_label || 'г';
 }
 
-function MealSectionCard({ section, products, rows, onAddRow, onChangeRow, onRemoveRow }) {
+function MealSectionCard({
+  section,
+  products,
+  rows,
+  onAddRow,
+  onChangeRow,
+  onPatchRow,
+  onRemoveRow,
+  onOpenCreateProduct,
+}) {
+  const [openedRowId, setOpenedRowId] = useState('');
   const productsById = createProductsById(products);
   const sectionSummary = buildSectionSummary(rows, productsById);
   const filteredProducts = products.filter((product) => product.allowed_sections.includes(section.key));
@@ -55,23 +71,82 @@ function MealSectionCard({ section, products, rows, onAddRow, onChangeRow, onRem
         {rows.map((row) => {
           const nutrition = calculateRowNutrition(row, productsById);
           const unitLabel = getUnitLabel(productsById, row.product_id);
+          const selectedProduct = productsById[row.product_id];
+          const productQuery = row.product_query || selectedProduct?.name || '';
+          const suggestions = getProductSuggestions(filteredProducts, section.key, productQuery, 5);
+          const showDropdown = openedRowId === row.client_id && (productQuery.trim() || suggestions.length > 0);
+
+          function handleProductInputChange(value) {
+            const patch = {
+              product_query: value,
+            };
+
+            if (selectedProduct && selectedProduct.name !== value) {
+              patch.product_id = '';
+            }
+
+            onPatchRow(section.key, row.client_id, patch);
+          }
+
+          function handleSelectProduct(product) {
+            onPatchRow(section.key, row.client_id, {
+              product_id: product.id,
+              product_query: product.name,
+            });
+            setOpenedRowId('');
+          }
 
           return (
             <div key={row.client_id} className="entry-row">
               <label className="field-group">
                 <span className="field-label">Продукт</span>
-                <select
-                  className="field-control"
-                  value={row.product_id}
-                  onChange={(event) => onChangeRow(section.key, row.client_id, 'product_id', Number(event.target.value) || '')}
-                >
-                  <option value="">Выберите продукт</option>
-                  {filteredProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="product-search">
+                  <input
+                    className="field-control"
+                    type="text"
+                    value={productQuery}
+                    onFocus={() => setOpenedRowId(row.client_id)}
+                    onBlur={() => {
+                      window.setTimeout(() => {
+                        setOpenedRowId((currentRowId) => (currentRowId === row.client_id ? '' : currentRowId));
+                      }, 120);
+                    }}
+                    onChange={(event) => handleProductInputChange(event.target.value)}
+                    placeholder="Начните печатать название продукта"
+                  />
+
+                  {showDropdown && (
+                    <div className="product-dropdown">
+                      {suggestions.map((product) => (
+                        <button
+                          key={product.id}
+                          className="product-dropdown__item"
+                          type="button"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            handleSelectProduct(product);
+                          }}
+                        >
+                          <span>{product.name}</span>
+                          <strong>{product.calories} ккал</strong>
+                        </button>
+                      ))}
+
+                      <button
+                        className="product-dropdown__item product-dropdown__item--accent"
+                        type="button"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          onOpenCreateProduct(section.key, row.client_id, productQuery);
+                          setOpenedRowId('');
+                        }}
+                      >
+                        <span>Добавить самому</span>
+                        <strong>{productQuery.trim() ? productQuery.trim() : 'Новый продукт'}</strong>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </label>
 
               <label className="field-group">

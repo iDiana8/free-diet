@@ -1,24 +1,6 @@
 const { createEmptyEntriesMap, buildDashboard, groupEntries } = require('./nutrition.service');
-
-async function getProducts(pool) {
-  const result = await pool.query(`
-    SELECT
-      id,
-      name,
-      product_kind,
-      unit_label,
-      base_amount,
-      calories,
-      protein,
-      fat,
-      carbs,
-      allowed_sections
-    FROM nutrition_products
-    ORDER BY name ASC
-  `);
-
-  return result.rows;
-}
+const { getProducts } = require('./catalog.service');
+const { createRequestError } = require('../lib/errors');
 
 async function getUserTargets(pool, userId) {
   const result = await pool.query(
@@ -116,7 +98,7 @@ function createProductsById(products) {
 
 async function getDailyPayload(pool, userId, date) {
   const [products, targets, dailyRecord, healthMetrics] = await Promise.all([
-    getProducts(pool),
+    getProducts(pool, userId),
     getUserTargets(pool, userId),
     getDailyRecord(pool, userId, date),
     getHealthMetrics(pool, userId, date),
@@ -137,9 +119,12 @@ async function getDailyPayload(pool, userId, date) {
 }
 
 async function saveDailyPayload(pool, userId, date, payload) {
+  const products = await getProducts(pool, userId);
+  const productsById = createProductsById(products);
   const client = await pool.connect();
 
   try {
+    validateEntriesAgainstProducts(payload.entries, productsById);
     await client.query('BEGIN');
 
     const dailyRecordResult = await client.query(
@@ -206,13 +191,27 @@ async function saveDailyPayload(pool, userId, date, payload) {
 }
 
 async function getCatalogPayload(pool, userId) {
-  const [products, targets] = await Promise.all([getProducts(pool), getUserTargets(pool, userId)]);
+  const [products, targets] = await Promise.all([getProducts(pool, userId), getUserTargets(pool, userId)]);
 
   return {
     products,
     targets,
     entries: createEmptyEntriesMap(),
   };
+}
+
+function validateEntriesAgainstProducts(entries, productsById) {
+  for (const entry of entries) {
+    const product = productsById[entry.product_id];
+
+    if (!product) {
+      throw createRequestError('Выбранный продукт не найден в вашем каталоге');
+    }
+
+    if (!product.allowed_sections.includes(entry.section_key)) {
+      throw createRequestError('Продукт нельзя сохранить в выбранный блок');
+    }
+  }
 }
 
 module.exports = {

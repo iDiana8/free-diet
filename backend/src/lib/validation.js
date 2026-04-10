@@ -216,6 +216,66 @@ function validateProfilePayload(payload) {
   return '';
 }
 
+function validateCatalogProductPayload(payload) {
+  if (!isPlainObject(payload)) {
+    return 'Тело запроса должно быть объектом';
+  }
+
+  if (!SECTION_KEYS.includes(payload.section_key)) {
+    return 'Нужно указать корректный блок для продукта';
+  }
+
+  if (typeof payload.name !== 'string' || payload.name.trim().length < 2 || payload.name.trim().length > 120) {
+    return 'Название продукта должно быть строкой длиной от 2 до 120 символов';
+  }
+
+  const caloriesError = validateOptionalNumber(
+    payload.calories,
+    0,
+    5000,
+    'Калорийность должна быть числом от 0 до 5000',
+  );
+
+  if (caloriesError || payload.calories === null || payload.calories === undefined) {
+    return caloriesError || 'Калорийность обязательна';
+  }
+
+  const proteinError = validateOptionalNumber(
+    payload.protein,
+    0,
+    500,
+    'Белки должны быть числом от 0 до 500',
+  );
+
+  if (proteinError) {
+    return proteinError;
+  }
+
+  const fatError = validateOptionalNumber(
+    payload.fat,
+    0,
+    500,
+    'Жиры должны быть числом от 0 до 500',
+  );
+
+  if (fatError) {
+    return fatError;
+  }
+
+  const carbsError = validateOptionalNumber(
+    payload.carbs,
+    0,
+    500,
+    'Углеводы должны быть числом от 0 до 500',
+  );
+
+  if (carbsError) {
+    return carbsError;
+  }
+
+  return '';
+}
+
 module.exports = {
   validateDate,
   validateDailyPayload,
@@ -223,4 +283,5 @@ module.exports = {
   validateLoginPayload,
   validateProfilePayload,
   validateHealthMetrics,
+  validateCatalogProductPayload,
 };

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  createCatalogProduct,
   getCurrentUser,
   getDailyJournal,
   loginUser,
@@ -11,6 +12,7 @@ import AuthPanel from './components/AuthPanel';
 import DashboardCard from './components/DashboardCard';
 import MealSectionCard from './components/MealSectionCard';
 import NotesPanel from './components/NotesPanel';
+import ProductCreateModal from './components/ProductCreateModal';
 import ProfileOverviewCard from './components/ProfileOverviewCard';
 import { sections } from './constants/sections';
 import {
@@ -19,6 +21,7 @@ import {
   normalizeEntries,
   buildDashboard,
   createSavePayload,
+  sortProductsByName,
 } from './lib/nutrition';
 import './styles/main.css';
 import './styles/app.css';
@@ -41,6 +44,17 @@ const defaultHealthForm = {
   blood_pressure_systolic: '',
   blood_pressure_diastolic: '',
   blood_sugar_level: '',
+};
+
+const defaultProductModal = {
+  is_open: false,
+  section_key: '',
+  client_id: '',
+  name: '',
+  calories: '',
+  protein: '',
+  fat: '',
+  carbs: '',
 };
 
 function getTodayDate() {
@@ -107,6 +121,9 @@ function App() {
   const [successMessage, setSuccessMessage] = useState('');
   const [token, setToken] = useState(getStoredToken);
   const [currentUser, setCurrentUser] = useState(null);
+  const [productModal, setProductModal] = useState(defaultProductModal);
+  const [productModalSaving, setProductModalSaving] = useState(false);
+  const [productModalError, setProductModalError] = useState('');
 
   useEffect(() => {
     restoreSession();
@@ -163,6 +180,8 @@ function App() {
       setTargets(data.dashboard?.targets || defaultTargets);
       setNote(data.note || '');
       setHealthForm(normalizeHealthForm(data.health_metrics));
+      setProductModal(defaultProductModal);
+      setProductModalError('');
     } catch (requestError) {
       if (requestError.message === 'Нужна авторизация') {
         handleLogout();
@@ -175,6 +194,8 @@ function App() {
       setTargets(defaultTargets);
       setNote('');
       setHealthForm(defaultHealthForm);
+      setProductModal(defaultProductModal);
+      setProductModalError('');
     } finally {
       setLoading(false);
     }
@@ -227,6 +248,8 @@ function App() {
     setError('');
     setSuccessMessage('');
     setLoading(false);
+    setProductModal(defaultProductModal);
+    setProductModalError('');
   }
 
   function handleProfileChange(fieldName, value) {
@@ -293,7 +316,7 @@ function App() {
     }));
   }
 
-  function handleChangeRow(sectionKey, clientId, fieldName, value) {
+  function handlePatchRow(sectionKey, clientId, patch) {
     setEntriesBySection((currentState) => ({
       ...currentState,
       [sectionKey]: currentState[sectionKey].map((row) => {
@@ -303,10 +326,14 @@ function App() {
 
         return {
           ...row,
-          [fieldName]: value,
+          ...patch,
         };
       }),
     }));
+  }
+
+  function handleChangeRow(sectionKey, clientId, fieldName, value) {
+    handlePatchRow(sectionKey, clientId, { [fieldName]: value });
   }
 
   function handleRemoveRow(sectionKey, clientId) {
@@ -348,6 +375,69 @@ function App() {
       setError(requestError.message || 'Не удалось сохранить дневник');
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleOpenCreateProduct(sectionKey, clientId, productName) {
+    setProductModal({
+      is_open: true,
+      section_key: sectionKey,
+      client_id: clientId,
+      name: productName.trim(),
+      calories: '',
+      protein: '',
+      fat: '',
+      carbs: '',
+    });
+    setProductModalError('');
+  }
+
+  function handleCloseCreateProduct() {
+    setProductModal(defaultProductModal);
+    setProductModalError('');
+  }
+
+  function handleChangeCreateProduct(fieldName, value) {
+    setProductModal((currentState) => ({
+      ...currentState,
+      [fieldName]: value,
+    }));
+  }
+
+  async function handleCreateProductSubmit(event) {
+    event.preventDefault();
+    setProductModalSaving(true);
+    setProductModalError('');
+
+    try {
+      const payload = {
+        section_key: productModal.section_key,
+        name: productModal.name.trim(),
+        calories: parseOptionalNumber(productModal.calories),
+        protein: parseOptionalNumber(productModal.protein),
+        fat: parseOptionalNumber(productModal.fat),
+        carbs: parseOptionalNumber(productModal.carbs),
+      };
+
+      const data = await createCatalogProduct(payload, token);
+      const product = data.product;
+
+      setProducts((currentProducts) => sortProductsByName([...currentProducts, product]));
+      handlePatchRow(productModal.section_key, productModal.client_id, {
+        product_id: product.id,
+        product_query: product.name,
+      });
+      setSuccessMessage(`Продукт "${product.name}" добавлен в каталог.`);
+      handleCloseCreateProduct();
+    } catch (requestError) {
+      if (requestError.message === 'Нужна авторизация') {
+        handleLogout();
+        return;
+      }
+
+      setProductModalError(requestError.message || 'Не удалось добавить продукт');
+    } finally {
+      setProductModalSaving(false);
     }
   }
 
@@ -423,7 +513,9 @@ function App() {
                       rows={entriesBySection[section.key] || []}
                       onAddRow={handleAddRow}
                       onChangeRow={handleChangeRow}
+                      onPatchRow={handlePatchRow}
                       onRemoveRow={handleRemoveRow}
+                      onOpenCreateProduct={handleOpenCreateProduct}
                     />
                   ))}
                 </div>
@@ -434,6 +526,16 @@ function App() {
           </div>
         </div>
       </div>
+
+      <ProductCreateModal
+        isOpen={productModal.is_open}
+        form={productModal}
+        submitting={productModalSaving}
+        error={productModalError}
+        onChange={handleChangeCreateProduct}
+        onClose={handleCloseCreateProduct}
+        onSubmit={handleCreateProductSubmit}
+      />
     </main>
   );
 }

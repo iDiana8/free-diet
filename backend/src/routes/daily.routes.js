@@ -17,6 +17,10 @@ router.get('/:date', requireAuth, async (request, response) => {
     const payload = await getDailyPayload(pool, request.user.id, request.params.date);
     return response.json(payload);
   } catch (error) {
+    if (error.statusCode) {
+      return response.status(error.statusCode).json({ message: error.message });
+    }
+
     console.error(error);
     return response.status(500).json({ message: 'Не удалось загрузить дневник питания' });
   }
@@ -39,6 +43,10 @@ router.put('/:date', requireAuth, async (request, response) => {
     const payload = await saveDailyPayload(pool, request.user.id, request.params.date, request.body);
     return response.json(payload);
   } catch (error) {
+    if (error.statusCode) {
+      return response.status(error.statusCode).json({ message: error.message });
+    }
+
     console.error(error);
     return response.status(500).json({ message: 'Не удалось сохранить дневник питания' });
   }
