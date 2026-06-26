@@ -38,7 +38,6 @@ function DashboardCard({ dashboard, selectedDate }) {
         <div>
           <div className="dashboard-card__eyebrow">Дневная аналитика</div>
           <h2 className="dashboard-card__title">Сводка питания за {selectedDate}</h2>
-          <p className="dashboard-card__text">
             Здесь видно, как человек заполнил рацион по калориям, макроэлементам и воде.
           </p>
         </div>

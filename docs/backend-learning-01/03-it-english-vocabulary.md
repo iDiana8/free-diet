@@ -1,0 +1,45 @@
+# IT English Vocabulary (backend)
+
+- `request` — запрос
+- `response` — ответ
+- `route` — маршрут
+- `handler` — обработчик
+- `middleware` — промежуточный обработчик
+- `payload` — полезные данные запроса/ответа
+- `endpoint` — конечная точка API
+- `service` — сервисный слой (бизнес-логика)
+- `repository` / `data access` — слой доступа к данным
+- `validation` — валидация
+- `constraint` — ограничение БД
+- `transaction` — транзакция
+- `commit` — фиксация транзакции
+- `rollback` — откат транзакции
+- `query` — SQL-запрос
+- `schema` — схема БД
+- `seed` / `seed data` — начальные данные
+- `normalize` — нормализовать
+- `sanitize` — очистить/обезопасить ввод
+- `hash` — хеш
+- `salt` — соль
+- `token` — токен
+- `signature` — подпись
+- `expired` — истекший (о токене)
+- `unauthorized` — неавторизован
+- `forbidden` — доступ запрещен
+- `not found` — не найдено
+- `internal server error` — внутренняя ошибка сервера
+- `default value` — значение по умолчанию
+- `fallback` — запасной вариант
+- `edge case` — пограничный случай
+- `happy path` — позитивный (базовый) сценарий
+- `test case` — тестовый сценарий
+- `assert` — проверка в тесте
+- `mock` — подмена зависимости в тестах
+
+## Полезные шаблоны фраз
+- `validate payload` — провалидировать payload
+- `handle the error` — обработать ошибку
+- `save to database` — сохранить в базу данных
+- `return JSON response` — вернуть JSON-ответ
+- `protect route with auth middleware` — защитить маршрут middleware авторизации
+- `run tests before refactor` — запустить тесты до рефакторинга
